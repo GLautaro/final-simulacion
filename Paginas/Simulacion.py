@@ -1,5 +1,8 @@
 import streamlit as st
+import os
 
+from Soporte.ControladorSimuladorColas import Controlador
+import Modulos.Utils as utils
 
 def LoadPage():
     st.title('Cafeteria UTN')
@@ -31,7 +34,7 @@ def LoadPage():
 
     # Parametros de tiempo de compra de ticket
     st.header('🎫Parametros de compra de ticket.')
-    st.number_input('Tiempo de compra de ticket (segundos)', min_value=0, value=20, format='%d')
+    tiempo_compra = st.number_input('Tiempo de compra de ticket (segundos)', min_value=0, value=20, format='%d')
 
     # Parametros de tiempo de entrega de pedido
     st.header('🍴Parametros de entrega de pedido')
@@ -41,8 +44,8 @@ def LoadPage():
     # Parametros de consumicion de pedido
     st.header('🍴Parametros de consumicion de pedido.')
     st.markdown('Se solicitan los parametros correspondientes a una distribucion uniforme (A-B)')
-    a_uniforme_mant = st.number_input('A:', value=4, format='%d')
-    b_uniforme_mant = st.number_input('B:', value=6, format='%d')
+    a_uniforme = st.number_input('A:', value=4, format='%d')
+    b_uniforme = st.number_input('B:', value=6, format='%d')
 
     # -----------------------
     # Fin seccion parametros
@@ -50,4 +53,12 @@ def LoadPage():
 
     simulacion_ok = st.button('Iniciar simulación')
     if simulacion_ok:
-        pass
+        controlador = Controlador(tiempo, 0, min_iteraciones, cant_iteraciones, cantidad_mesas, media_demora, desviacion_est_demora, [prob_compra, prob_mesa, prob_de_paso], tiempo_compra, exp_neg_media, a_uniforme, b_uniforme)
+        df = controlador.simular()
+
+        st.write(df.describe())
+        #os.system("taskkill /F /IM excel.exe")
+        nombre = "final.xlsx"
+        #utils.GenerarExcel(df, nombre)
+        #os.startfile(nombre)
+
