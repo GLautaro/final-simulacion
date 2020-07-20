@@ -4,6 +4,7 @@ class Empleado():
     def __init__(self, id):
         self.estado = EE.LIBRE
         self.id_empleado = id
+        self.cliente = None
 
     def __eq__(self, otro):
         if otro is None:
@@ -13,10 +14,11 @@ class Empleado():
         return False
     
     def estaLibre(self):
-        return self.estado = EE.LIBRE
+        return self.estado == EE.LIBRE
     
-    def iniciarOcupamiento(self):
+    def iniciarOcupamiento(self, cliente):
         self.estado = EE.OCUPADO
+        self.cliente = cliente
     
     def terminarOcupamiento(self):
         self.estado = EE.LIBRE

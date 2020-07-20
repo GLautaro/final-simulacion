@@ -40,10 +40,11 @@ class LlegadaCliente(Evento):
 
 
 class FinCompraTicket(Evento):
-    def __init__(self, reloj, duracion, id):
+    def __init__(self, reloj, duracion, cliente, id):
         hora = Truncate((reloj + duracion), 2)
         nombre = "Fin Compra Ticket " + str(id)
         super().__init__(duracion, hora, nombre, id)
+        self.cliente = cliente
 
 
 class FinEntregaPedido(Evento):

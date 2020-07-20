@@ -6,6 +6,7 @@ class Cliente:
         self.estado = estado
         self.tiempo_llegada = tiempo_llegada
         self.mesa = None
+        self.empleado = None
 
     def __eq__(self, cliente):
         return self.id == cliente.id
@@ -35,8 +36,10 @@ class Cliente:
     def enColaEntregaPedido(self):
         self.estado = EC.EN_COLA_ENTREGA
     
-    def esperandoEntregaPedido(self):
+    def esperandoEntregaPedido(self, empleado):
         self.estado = EC.ESPERANDO_ENTREGA
+        self.empleado = empleado
+        empleado.iniciarOcupamiento(self)
     
     def comenzarUsoMesa(self, mesa):
         self.estado = EC.OCUPANDO_MESA

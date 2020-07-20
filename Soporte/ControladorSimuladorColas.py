@@ -3,6 +3,7 @@ import pandas as pd
 ##Lib. y modulos internos
 from Modulos.Constantes import EstadoDueño as ED
 from Modulos.Constantes import EstadoEmpleados as EE
+from Modulos.Constantes import EstadoMesas as EM
 from Modulos.Constantes import DecisionMontecarlo as DM
 from Entidades.Mesa import Mesa
 from Entidades.Cliente import Cliente
@@ -22,7 +23,7 @@ class Controlador:
         self.mesas = []
         self.cant_mesas = cant_mesas
         for i in range(cant_mesas):
-            self.mesas.append(Mesa(i))
+            self.mesas.append(Mesa(i+1))
         
         self.media_llegada = media_llegada
         self.desv_llegada = desv_llegada
@@ -57,14 +58,22 @@ class Controlador:
         self.fin_uso_mesa = None
 
 
+    def buscarEmpleadoLibre(self):
+        libres = list(filter(lambda emp: emp.estaLibre(), [self.empleado1, self.empleado2]))
+        return None if len(libres) == 0 else libres[0]
+
+    def buscarMesaLibre(self):
+        libres = list(filter(lambda mesa: mesa.esta_libre(), self.mesas))
+        return None if len(libres) == 0 else libres[0]
+
+
     def manejarInicializacion(self):
         '''
         Realiza la logica para manejar el evento de inicializacion
         '''
         self.llegada_cliente = LlegadaCliente(self.reloj, self.media_llegada, self.desv_llegada, self.probabilidades ,self.contador_clientes)
-        if self.llegada_cliente.decision_cliente == DM.COMPRA:
 
-        self.fin_compra_ticket = FinCompraTicket(0, 0, 0)
+        self.fin_compra_ticket = FinCompraTicket(0, 0, None, 0)
         self.fin_entrega_pedido = FinEntregaPedido(0, 0, 0, None)
         self.fin_uso_mesa = FinUsoMesa(0, None, 0, 0, 0)
 
@@ -75,22 +84,28 @@ class Controlador:
         cliente = Cliente(evento_actual.id, "", self.reloj)
         self.clientes.append(cliente)
 
+        #Genero el proximo evento llegada cliente
         prox_llegada_cliente = LlegadaCliente(self.reloj, self.media_llegada, 
                                 self.desv_llegada, self.probabilidades, self.contador_clientes)
         self.eventos.append(prox_llegada_cliente)
         self.llegada_cliente = prox_llegada_cliente
         
         #Analizar lo que pasa con la decision del cliente
+        #Si va a comprar genero el evento de fin compra ticket
         if evento_actual.decision_cliente == DM.COMPRA:
-            if len(self.cola_compra) == 0:
-                fin_compra = FinCompraTicket(self.reloj, self.tiempo_compra, cliente.id)
+            
+            #TODO: Revisar si esto funciona bien
+            if len(self.cola_compra) == 0 and self.dueño == ED.LIBRE:
+                fin_compra = FinCompraTicket(self.reloj, self.tiempo_compra, cliente, cliente.id)
                 self.eventos.append(fin_compra)
                 self.fin_compra_ticket = fin_compra
                 cliente.esperandoTicket()
+                self.dueño = ED.OCUPADO
             else:
                 self.cola_compra.append(cliente)
                 cliente.enColaCompraTicket()
         
+        #Si quiere usar una mesa, me fijo si hay disponibles. Si no hay se retira
         elif evento_actual.decision_cliente == DM.MESA:
             mesa_libre = self.buscarMesaLibre()
             if mesa_libre is not None:
@@ -102,11 +117,74 @@ class Controlador:
             else:
                 cliente.finalizar()
 
+        #Si esta solo de paso, se retira. No afecta a la estadistica
         else:
             cliente.finalizar()
 
-    def manejarFinCompraTicket(self, evento_actual):
-        pass
+    def manejarFinCompraTicket(self, cliente_actual):
+        #Analizar cola ticket(dueño)
+        if len(self.cola_compra) >= 1:
+            #Si tengo alguien en cola lo hago pasar, genero el evento fin compra del nuevo cliente
+            prox_cliente = self.cola_compra.pop()
+            nuevo_fin_compra = FinCompraTicket(self.reloj, self.tiempo_compra, prox_cliente, prox_cliente.id)
+            self.eventos.append(nuevo_fin_compra)
+            prox_cliente.esperandoTicket()
+        elif len(self.cola_compra) == 0:
+            #Si no hay gente en cola para comprar ticket, el dueño esta libre
+            self.dueño = ED.LIBRE
+
+        #Busco empleado libre para que se encargue de la entrega del pedido (cliente actual)
+        #Si no empleado libre hay derivar a cola
+        empleado = self.buscarEmpleadoLibre()
+        if empleado is not None:
+            nuevo_fin_entrega = FinEntregaPedido(self.reloj, self.media_entrega, empleado, cliente_actual.id)
+            self.eventos.append(nuevo_fin_entrega)
+            self.vectorFinEntrega[empleado.id_empleado - 1] = nuevo_fin_entrega.hora
+            self.fin_entrega_pedido = nuevo_fin_entrega
+            cliente_actual.esperandoEntregaPedido(empleado)
+        else:
+            cliente_actual.enColaEntregaPedido()
+            self.cola_pedidos.append(cliente_actual)
+            
+    def manejarFinEntregaPedido(self, evento_actual):
+        #Obtengo el empleado y el cliente del evento
+        empleado_actual = evento_actual.empleado
+        cliente_actual = empleado_actual.cliente
+        empleado_actual.terminarOcupamiento()
+        #Genero el nuevo fin de entrega si hay gente en cola entrega
+        if len(self.cola_pedidos) >= 1:
+            prox_cliente = self.cola_pedidos.pop()
+            empleado = self.buscarEmpleadoLibre()
+            nuevo_fin_entrega =  FinEntregaPedido(self.reloj, self.media_entrega, empleado, prox_cliente.id)
+            self.eventos.append(nuevo_fin_entrega)
+            self.vectorFinEntrega[empleado.id_empleado - 1] = nuevo_fin_entrega.hora
+            self.fin_entrega_pedido = nuevo_fin_entrega
+            prox_cliente.esperandoEntregaPedido(empleado)
+        
+        #Me fijo si hay mesa libre, si hay genero el evento fin uso mesa
+        #Si no hay, el cliente se retira (actualizar estadisticas)
+        mesa = self.buscarMesaLibre()
+        if mesa is not None:
+            nuevo_fin_uso_mesa = FinUsoMesa(self.reloj, mesa, self.a_mesa, self.b_mesa, cliente_actual.id)
+            self.eventos.append(nuevo_fin_uso_mesa)
+            self.vectorFinMesa[mesa.id_mesa - 1] = nuevo_fin_uso_mesa.hora
+            self.fin_uso_mesa = nuevo_fin_uso_mesa
+            cliente_actual.comenzarUsoMesa(mesa)
+        else:
+            cliente_actual.finalizar()
+            self.contador_clientes_fin += 1
+            self.acum_tiempo_permanencia += (self.reloj - cliente_actual.tiempo_llegada)
+        
+    def manejarFinUsoMesa(self, evento_actual):
+        # Cambio estado del cliente. Libero la mesa
+        mesa_actual = evento_actual.mesa
+        cliente_actual = mesa_actual.cliente
+        cliente_actual.finalizar()
+
+        # Actualizo estadisticas
+        self.contador_clientes_fin += 1
+        self.acum_tiempo_permanencia += (cliente_actual.tiempo_llegada - self.reloj)
+
 
     def crearVectorEstado(self, evento_actual):
         '''
@@ -130,7 +208,7 @@ class Controlador:
 
 
         for i in range(self.cant_mesas):
-            eventos.append("".join(["Fin uso Mesa ", str(i+1), " : ", self.vectorFinMesa[i]]))
+            eventos.append("".join(["Fin uso Mesa ", str(i+1), " : ", str(self.vectorFinMesa[i])]))
         
         compra_ticket = [
             "Cola Compra: " + str(len(self.cola_compra)),
@@ -144,7 +222,7 @@ class Controlador:
 
         mesas_estado = []
         for i in range(self.cant_mesas):
-            mesas_estado.append("".join(["Estado mesa ", str(i+1), " : ", self.mesas[i].estado]))
+            mesas_estado.append("".join(["Estado mesa ", str(i+1), " : ", str(self.mesas[i].estado)]))
         
         fin_list = [
             "Cantidad Clientes Finalizados: " + str(self.contador_clientes_fin),
@@ -159,13 +237,9 @@ class Controlador:
             if mesa is None:
                 fin_list.append("-")
             else:
-                fin_list.append("Usando Mesa " + str(mesa.id_mesa)) }
+                fin_list.append("Usando Mesa " + str(mesa.id_mesa))
         
         return eventos + compra_ticket + empleados + mesas_estado + fin_list
-
-    def buscarMesaLibre(self):
-        libres = list(filter(lambda mesa: mesa.esta_libre(), self.mesas))
-        return None if len(libres) == 0 else libres[0]
 
     def simular(self):
         df_datos_fijos = pd.DataFrame(columns=utils.crearColumnasParcialesDataFrame(self.cant_mesas))
@@ -196,7 +270,13 @@ class Controlador:
                 self.manejarLlegadaCliente(evento_actual)
             
             elif isinstance(evento_actual, FinCompraTicket):
-                self.manejarFinCompraTicket(evento_actual)
+                self.manejarFinCompraTicket(evento_actual.cliente)
+            
+            elif isinstance(evento_actual, FinEntregaPedido):
+                self.manejarFinEntregaPedido(evento_actual)
+
+            elif isinstance(evento_actual, FinUsoMesa):
+                self.manejarFinUsoMesa(evento_actual)
 
             #Vector estado (experimental-only)
             vectorEstado = self.crearVectorEstado(evento_actual)

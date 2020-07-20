@@ -53,6 +53,7 @@ def LoadPage():
 
     simulacion_ok = st.button('Iniciar simulación')
     if simulacion_ok:
+        tiempo_compra = utils.Truncate((tiempo_compra / 60), 2)
         controlador = Controlador(tiempo, 0, min_iteraciones, cant_iteraciones, cantidad_mesas, media_demora, desviacion_est_demora, [prob_compra, prob_mesa, prob_de_paso], tiempo_compra, exp_neg_media, a_uniforme, b_uniforme)
         df = controlador.simular()
 
