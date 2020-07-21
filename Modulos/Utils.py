@@ -29,9 +29,8 @@ def crearColumnasParcialesDataFrame(cant_mesas):
         "Decision_cliente",
         "Tiempo compra ticket",
         "Fin compra ticket",
-        "Tiempo entrega pedido emp. 1",
+        "Tiempo entrega pedido",
         "Fin entrega pedido emp. 1",
-        "Tiempo entrega pedido emp. 2",
         "Fin entrega pedido emp. 2",
         "Tiempo uso mesa"
     ]

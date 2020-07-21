@@ -57,7 +57,7 @@ def LoadPage():
         controlador = Controlador(tiempo, 0, min_iteraciones, cant_iteraciones, cantidad_mesas, media_demora, desviacion_est_demora, [prob_compra, prob_mesa, prob_de_paso], tiempo_compra, exp_neg_media, a_uniforme, b_uniforme)
         df = controlador.simular()
 
-        st.write(df.describe())
+        st.write(df)
         #os.system("taskkill /F /IM excel.exe")
         nombre = "final.xlsx"
         #utils.GenerarExcel(df, nombre)

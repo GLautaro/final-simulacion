@@ -44,6 +44,7 @@ class Controlador:
         self.contador_clientes_fin = 0
         self.acum_tiempo_permanencia = 0
 
+
         self.dueño = ED.LIBRE
         self.empleado1 = Empleado(1)
         self.empleado2 = Empleado(2)
@@ -53,6 +54,8 @@ class Controlador:
         self.vectorFinMesa = [0 for i in range(cant_mesas)]
 
         self.llegada_cliente = None
+        self.rnd_decision = ""
+        self.decision_cliente = ""
         self.fin_compra_ticket = None
         self.fin_entrega_pedido = None
         self.fin_uso_mesa = None
@@ -71,7 +74,7 @@ class Controlador:
         '''
         Realiza la logica para manejar el evento de inicializacion
         '''
-        self.llegada_cliente = LlegadaCliente(self.reloj, self.media_llegada, self.desv_llegada, self.probabilidades ,self.contador_clientes)
+        self.llegada_cliente = LlegadaCliente(self.reloj, self.media_llegada, self.desv_llegada, self.contador_clientes)
 
         self.fin_compra_ticket = FinCompraTicket(0, 0, None, 0)
         self.fin_entrega_pedido = FinEntregaPedido(0, 0, 0, None)
@@ -86,13 +89,18 @@ class Controlador:
 
         #Genero el proximo evento llegada cliente
         prox_llegada_cliente = LlegadaCliente(self.reloj, self.media_llegada, 
-                                self.desv_llegada, self.probabilidades, self.contador_clientes)
+                                self.desv_llegada, self.contador_clientes)
         self.eventos.append(prox_llegada_cliente)
         self.llegada_cliente = prox_llegada_cliente
+
+        #generar decision del cliente
+        cliente.calcularDecision(self.probabilidades)
+        self.rnd_decision = cliente.rnd_decision
+        self.decision_cliente = cliente.decision
         
         #Analizar lo que pasa con la decision del cliente
         #Si va a comprar genero el evento de fin compra ticket
-        if evento_actual.decision_cliente == DM.COMPRA:
+        if cliente.decision == DM.COMPRA:
             
             #TODO: Revisar si esto funciona bien
             if len(self.cola_compra) == 0 and self.dueño == ED.LIBRE:
@@ -106,13 +114,13 @@ class Controlador:
                 cliente.enColaCompraTicket()
         
         #Si quiere usar una mesa, me fijo si hay disponibles. Si no hay se retira
-        elif evento_actual.decision_cliente == DM.MESA:
+        elif cliente.decision == DM.MESA:
             mesa_libre = self.buscarMesaLibre()
             if mesa_libre is not None:
                 fin_uso_mesa = FinUsoMesa(self.reloj, mesa_libre, self.a_mesa, self.b_mesa, cliente.id)
                 self.eventos.append(fin_uso_mesa)
                 self.fin_uso_mesa = fin_uso_mesa
-                self.vectorFinMesa[cliente.id - 1] = fin_uso_mesa.hora
+                self.vectorFinMesa[mesa_libre.id_mesa - 1] = fin_uso_mesa.hora
                 cliente.comenzarUsoMesa(mesa_libre)
             else:
                 cliente.finalizar()
@@ -147,9 +155,11 @@ class Controlador:
             self.cola_pedidos.append(cliente_actual)
             
     def manejarFinEntregaPedido(self, evento_actual):
-        #Obtengo el empleado y el cliente del evento
+        #Obtengo el empleado y el cliente del evento y termino la entrega actual
+        #Indico que el empleado esta listo para hacer otra entrega o estar libre
         empleado_actual = evento_actual.empleado
         cliente_actual = empleado_actual.cliente
+        self.vectorFinEntrega[empleado_actual.id_empleado - 1] = "-"
         empleado_actual.terminarOcupamiento()
         #Genero el nuevo fin de entrega si hay gente en cola entrega
         if len(self.cola_pedidos) >= 1:
@@ -176,14 +186,15 @@ class Controlador:
             self.acum_tiempo_permanencia += (self.reloj - cliente_actual.tiempo_llegada)
         
     def manejarFinUsoMesa(self, evento_actual):
-        # Cambio estado del cliente. Libero la mesa
+        # Cambio estado del cliente. Libero la mesa y borro su tiempo fin
         mesa_actual = evento_actual.mesa
         cliente_actual = mesa_actual.cliente
         cliente_actual.finalizar()
+        self.vectorFinMesa[mesa_actual.id_mesa - 1] = "-"
 
         # Actualizo estadisticas
         self.contador_clientes_fin += 1
-        self.acum_tiempo_permanencia += (cliente_actual.tiempo_llegada - self.reloj)
+        self.acum_tiempo_permanencia += (self.reloj - cliente_actual.tiempo_llegada)
 
 
     def crearVectorEstado(self, evento_actual):
@@ -196,8 +207,8 @@ class Controlador:
             "Reloj: " + str(self.reloj),
             "Tiempo entre llegadas Cliente: " + str(self.llegada_cliente.duracion),
             "Próxima llegada Cliente: " + str(self.llegada_cliente.hora),
-            "RND Decision: " + str(self.llegada_cliente.rnd_decision),
-            "Decision Cliente: " + str(self.llegada_cliente.decision_cliente),
+            "RND Decision: " + str(self.rnd_decision),
+            "Decision Cliente: " + str(self.decision_cliente),
             "Tiempo Compra Ticket: " + str(self.fin_compra_ticket.duracion),
             "Fin Compra Ticket: " + str(self.fin_compra_ticket.hora),
             "Tiempo entrega pedido: " + str(self.fin_entrega_pedido.duracion),
@@ -212,17 +223,18 @@ class Controlador:
         
         compra_ticket = [
             "Cola Compra: " + str(len(self.cola_compra)),
-            "Estado Dueño (Compra Ticket): " + str(self.dueño),
+            "Estado Dueño (Compra Ticket): " + str(self.dueño.value),
         ]
 
         empleados = [
             "Cola entrega pedidos: " + str(len(self.cola_pedidos)),
-            "Estado "
+            "Estado Empleado 1: " + str(self.empleado1.estado.value),
+            "Estado Empleado 2: " + str(self.empleado2.estado.value)
         ]
 
         mesas_estado = []
         for i in range(self.cant_mesas):
-            mesas_estado.append("".join(["Estado mesa ", str(i+1), " : ", str(self.mesas[i].estado)]))
+            mesas_estado.append("".join(["Estado mesa ", str(i+1), " : ", str(self.mesas[i].estado.value)]))
         
         fin_list = [
             "Cantidad Clientes Finalizados: " + str(self.contador_clientes_fin),
@@ -231,7 +243,7 @@ class Controlador:
 
         for cli in self.clientes:
             fin_list.append("Cliente ID: " + str(cli.id))
-            fin_list.append("Estado: " + str(cli.estado))
+            fin_list.append("Estado: " + str(cli.estado.value))
             fin_list.append("Reloj Llegada: " + str(cli.tiempo_llegada))
             mesa = cli.mesa
             if mesa is None:
@@ -240,6 +252,56 @@ class Controlador:
                 fin_list.append("Usando Mesa " + str(mesa.id_mesa))
         
         return eventos + compra_ticket + empleados + mesas_estado + fin_list
+
+    def crearVectorEstadoParcial(self, evento_actual):
+        
+        inicio = [
+            str(evento_actual.nombre),
+            str(self.reloj),
+            str(self.llegada_cliente.duracion),
+            str(self.llegada_cliente.hora),
+            str(self.rnd_decision),
+            str(self.decision_cliente),
+            str(self.fin_compra_ticket.duracion),
+            str(self.fin_compra_ticket.hora),
+            str(self.fin_entrega_pedido.duracion),
+            str(self.vectorFinEntrega[0]),
+            str(self.vectorFinEntrega[1]),
+            str(self.fin_uso_mesa.duracion)
+        ]
+
+        fin_mesas = []
+        for i in range(len(self.vectorFinMesa)):
+            fin_mesas.append(self.vectorFinMesa[i])
+        
+        colas = [
+            str(len(self.cola_compra)),
+            str(self.dueño.value),
+            str(len(self.cola_pedidos)),
+            str(self.empleado1.estado.value),
+            str(self.empleado2.estado.value)
+        ]
+
+        mesas_estado = []
+        for i in range(len(self.mesas)):
+            mesas_estado.append(str(self.mesas[i].estado.value))
+        
+        fin_list = [
+            str(self.contador_clientes_fin),
+            str(self.acum_tiempo_permanencia)
+        ]
+
+        return inicio + fin_mesas + colas + mesas_estado + fin_list
+        
+
+
+    def agregarDatos(self, df_datos_fijos, df_clientes, evento_actual):
+        vector_estado = self.crearVectorEstadoParcial(evento_actual)
+        loc = len(df_datos_fijos)
+        df_datos_fijos[loc] = vector_estado
+        for cli in self.clientes:
+            df_clientes = cli.agregarDF(df_clientes, loc)
+        return df_datos_fijos, df_clientes
 
     def simular(self):
         df_datos_fijos = pd.DataFrame(columns=utils.crearColumnasParcialesDataFrame(self.cant_mesas))
@@ -280,17 +342,20 @@ class Controlador:
 
             #Vector estado (experimental-only)
             vectorEstado = self.crearVectorEstado(evento_actual)
+            print("-")
             print(vectorEstado)
 
             if (self.reloj >= self.mostrar_desde and 
                 cantidad_iteraciones_mostradas < self.mostrar_cantidad and
                 cantidad_iteraciones_mostradas <= i):
 
-                #df_datos_fijos, df_clientes = self.agregarDatos()
+                df_datos_fijos, df_clientes = self.agregarDatos(df_datos_fijos, df_clientes, evento_actual)
                 cantidad_iteraciones_mostradas += 1
             
             #Incremento de reloj
             self.reloj = min(self.eventos).hora
             self.reloj = utils.Truncate(self.reloj, 2)
+        
+        df_datos_fijos, df_clientes = self.agregarDatos(df_datos_fijos, df_clientes, fin_simulacion)
 
-        return df_datos_fijos
+        return df_datos_fijos.join(df_clientes)

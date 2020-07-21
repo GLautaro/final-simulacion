@@ -28,15 +28,12 @@ class FinSimulacion(Evento):
 
 ##Puede ir aca el montecarlo???
 class LlegadaCliente(Evento):
-    def __init__(self, reloj, media, desviacion, probabilidades, id):
+    def __init__(self, reloj, media, desviacion, id):
         duracion = Truncate(random.gauss(media, desviacion), 2)
         hora = Truncate((reloj + duracion), 2)
         nombre = "Llegada Cliente " + str(id)
         super().__init__(duracion, hora, nombre, id)
-        rnd_decision = Truncate(random.uniform(0, 1.00001), 2)
-        self.rnd_decision = rnd_decision
-        self.decision_cliente = CalcularDecisionCliente(probabilidades, rnd_decision)
-
+        
 
 
 class FinCompraTicket(Evento):
