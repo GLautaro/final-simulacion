@@ -30,6 +30,8 @@ class FinSimulacion(Evento):
 class LlegadaCliente(Evento):
     def __init__(self, reloj, media, desviacion, id):
         duracion = Truncate(random.gauss(media, desviacion), 2)
+        if duracion < 0:
+            duracion = -duracion
         hora = Truncate((reloj + duracion), 2)
         nombre = "Llegada Cliente " + str(id)
         super().__init__(duracion, hora, nombre, id)

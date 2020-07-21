@@ -96,7 +96,7 @@ class Controlador:
         #generar decision del cliente
         cliente.calcularDecision(self.probabilidades)
         self.rnd_decision = cliente.rnd_decision
-        self.decision_cliente = cliente.decision
+        self.decision_cliente = cliente.decision.value
         
         #Analizar lo que pasa con la decision del cliente
         #Si va a comprar genero el evento de fin compra ticket
@@ -298,7 +298,7 @@ class Controlador:
     def agregarDatos(self, df_datos_fijos, df_clientes, evento_actual):
         vector_estado = self.crearVectorEstadoParcial(evento_actual)
         loc = len(df_datos_fijos)
-        df_datos_fijos[loc] = vector_estado
+        df_datos_fijos.loc[loc] = vector_estado
         for cli in self.clientes:
             df_clientes = cli.agregarDF(df_clientes, loc)
         return df_datos_fijos, df_clientes
@@ -344,6 +344,9 @@ class Controlador:
             vectorEstado = self.crearVectorEstado(evento_actual)
             print("-")
             print(vectorEstado)
+            print("---PARCIAL--")
+            test = self.crearVectorEstadoParcial(evento_actual)
+            print(test)
 
             if (self.reloj >= self.mostrar_desde and 
                 cantidad_iteraciones_mostradas < self.mostrar_cantidad and
@@ -358,4 +361,7 @@ class Controlador:
         
         df_datos_fijos, df_clientes = self.agregarDatos(df_datos_fijos, df_clientes, fin_simulacion)
 
-        return df_datos_fijos.join(df_clientes)
+        dataframe = {"Simulacion": df_datos_fijos.join(df_clientes)}
+        resultados = [self.contador_clientes, self.contador_clientes_fin, self.acum_tiempo_permanencia]
+
+        return dataframe, resultados

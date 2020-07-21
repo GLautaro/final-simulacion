@@ -19,7 +19,7 @@ def LoadPage():
     st.header('🏃Parametros de llegada de Clientes.')
     st.markdown('Se solicitan los parametros correspondientes a una distribucion normal')
     media_demora = st.number_input('Media μ', min_value=0.0, value=10.0)
-    desviacion_est_demora = st.number_input('Desviación estandar σ', min_value=0.0, value=3.0)
+    desviacion_est_demora = st.number_input('Desviación estandar σ', min_value=0.0, value=6.0)
 
     
     # Parametros de decision del cliente (montecarlo)
@@ -55,11 +55,23 @@ def LoadPage():
     if simulacion_ok:
         tiempo_compra = utils.Truncate((tiempo_compra / 60), 2)
         controlador = Controlador(tiempo, 0, min_iteraciones, cant_iteraciones, cantidad_mesas, media_demora, desviacion_est_demora, [prob_compra, prob_mesa, prob_de_paso], tiempo_compra, exp_neg_media, a_uniforme, b_uniforme)
-        df = controlador.simular()
+        df, resultados = controlador.simular()
 
-        st.write(df)
+        st.write(df["Simulacion"])
+
+        st.title("⭐Resultados de la simulacion")
+        st.write("Cantidad de personas totales: " + str(resultados[0]))
+        st.write("Cantidad de personas con atencion finalizada: " + str(resultados[1]))
+        st.write("Tiempo Acumulado de permanencia en la cafeteria (Minutos): " + str(utils.Truncate(resultados[2], 2)))
+        st.subheader("Promedio de permanencia de las personas en la cafeteria (Minutos): " + str(utils.Truncate(resultados[2] / resultados[1], 2)))
+        
         #os.system("taskkill /F /IM excel.exe")
-        nombre = "final.xlsx"
-        #utils.GenerarExcel(df, nombre)
-        #os.startfile(nombre)
+        nombre = "tpfinal.xlsx"
+        try:
+            utils.GenerarExcel(df, nombre)
+            os.startfile(nombre)
+        except Exception as err:
+            st.error("Ups! Ocurrió un error, intente cerrar el archivo Excel antes de simular. Error: " + str(err))
+
+        
 
