@@ -12,7 +12,7 @@ def LoadPage():
     st.header('🔧Parametros de simulación.')
     tiempo = st.number_input('Tiempo a simular (minutos - max. 120)', min_value=0.0, value=120.0, max_value=120.0)
     cant_iteraciones = st.number_input('Cantidad de iteraciones a mostrar', min_value=0, value=100, format='%d')
-    min_iteraciones = st.number_input('Minutos desde la cual se muestran las iteraciones', min_value=0.0, value=0.0, max_value=120.0)
+    min_iteraciones = st.number_input('Minutos desde la cual se muestran las iteraciones', min_value=0.0, value=0.0, max_value=tiempo)
     cantidad_mesas = st.number_input('Cantidad de mesas en la cafeteria', min_value=0, value=5, format='%d')
 
     # Parametros de llegada de clientes (distribucion Normal)
@@ -24,7 +24,7 @@ def LoadPage():
     
     # Parametros de decision del cliente (montecarlo)
     st.header('🔢Probabilidades en la decision del cliente.')
-    st.markdown('Se solicitan los parametros correspondientes a las decisiones que puede tomar una persona en la cafeteria.')
+    st.markdown('Se solicitan los probabilidades correspondientes a las decisiones que puede tomar una persona en la cafeteria.')
     prob_compra = st.number_input('Probabilidad de que entre a comprar(%):', min_value=0.0, max_value=100.0,
                                 value=60.0, step=1.0)
     prob_mesa = st.number_input('Probabilidad de que solo utilice una mesa(%):', min_value=0.0, max_value=100.0,
@@ -37,12 +37,12 @@ def LoadPage():
     tiempo_compra = st.number_input('Tiempo de compra de ticket (segundos)', min_value=0, value=20, format='%d')
 
     # Parametros de tiempo de entrega de pedido
-    st.header('🍴Parametros de entrega de pedido')
+    st.header('☕Parametros de entrega de pedido')
     st.markdown('Se solicitan los parametros correspondientes a una distribucion exponencial negativa')
     exp_neg_media = st.number_input('Media μ:', min_value=0.0, value=5.0)
 
     # Parametros de consumicion de pedido
-    st.header('🍴Parametros de consumicion de pedido.')
+    st.header('🍴Parametros de consumicion de pedido (Uso de mesa).')
     st.markdown('Se solicitan los parametros correspondientes a una distribucion uniforme (A-B)')
     a_uniforme = st.number_input('A:', value=4, format='%d')
     b_uniforme = st.number_input('B:', value=6, format='%d')

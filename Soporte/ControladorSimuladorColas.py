@@ -131,6 +131,8 @@ class Controlador:
 
     def manejarFinCompraTicket(self, cliente_actual):
         #limpio evento actual
+        self.rnd_decision = "-"
+        self.decision_cliente = "-"
         self.fin_compra_ticket = FinCompraTicket(0, None, None, 0)
         #Analizar cola ticket(dueño)
         if len(self.cola_compra) >= 1:
@@ -160,6 +162,8 @@ class Controlador:
     def manejarFinEntregaPedido(self, evento_actual):
         #Obtengo el empleado y el cliente del evento y termino la entrega actual
         #Indico que el empleado esta listo para hacer otra entrega o estar libre
+        self.rnd_decision = "-"
+        self.decision_cliente = "-"
         empleado_actual = evento_actual.empleado
         cliente_actual = empleado_actual.cliente
         self.vectorFinEntrega[empleado_actual.id_empleado - 1] = "-"
@@ -190,6 +194,8 @@ class Controlador:
         
     def manejarFinUsoMesa(self, evento_actual):
         # Cambio estado del cliente. Libero la mesa y borro su tiempo fin
+        self.rnd_decision = "-"
+        self.decision_cliente = "-"
         mesa_actual = evento_actual.mesa
         cliente_actual = mesa_actual.cliente
         cliente_actual.finalizar()
@@ -344,12 +350,12 @@ class Controlador:
                 self.manejarFinUsoMesa(evento_actual)
 
             #Vector estado (experimental-only)
-            vectorEstado = self.crearVectorEstado(evento_actual)
+            """ vectorEstado = self.crearVectorEstado(evento_actual)
             print("-")
             print(vectorEstado)
             print("---PARCIAL--")
             test = self.crearVectorEstadoParcial(evento_actual)
-            print(test)
+            print(test) """
 
             if (self.reloj >= self.mostrar_desde and 
                 cantidad_iteraciones_mostradas < self.mostrar_cantidad and
@@ -365,6 +371,6 @@ class Controlador:
         df_datos_fijos, df_clientes = self.agregarDatos(df_datos_fijos, df_clientes, fin_simulacion)
 
         dataframe = {"Simulacion": df_datos_fijos.join(df_clientes)}
-        resultados = [self.contador_clientes, self.contador_clientes_fin, self.acum_tiempo_permanencia]
+        resultados = [(self.contador_clientes - 1), self.contador_clientes_fin, self.acum_tiempo_permanencia]
 
         return dataframe, resultados
