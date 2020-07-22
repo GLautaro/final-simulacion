@@ -40,7 +40,11 @@ class LlegadaCliente(Evento):
 
 class FinCompraTicket(Evento):
     def __init__(self, reloj, duracion, cliente, id):
-        hora = Truncate((reloj + duracion), 2)
+        if duracion is not None:
+            hora = Truncate((reloj + duracion), 2)
+        else:
+            duracion = "-"
+            hora = "-"
         nombre = "Fin Compra Ticket " + str(id)
         super().__init__(duracion, hora, nombre, id)
         self.cliente = cliente

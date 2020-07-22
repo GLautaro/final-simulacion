@@ -76,7 +76,7 @@ class Controlador:
         '''
         self.llegada_cliente = LlegadaCliente(self.reloj, self.media_llegada, self.desv_llegada, self.contador_clientes)
 
-        self.fin_compra_ticket = FinCompraTicket(0, 0, None, 0)
+        self.fin_compra_ticket = FinCompraTicket(0, None, None, 0)
         self.fin_entrega_pedido = FinEntregaPedido(0, 0, 0, None)
         self.fin_uso_mesa = FinUsoMesa(0, None, 0, 0, 0)
 
@@ -102,7 +102,7 @@ class Controlador:
         #Si va a comprar genero el evento de fin compra ticket
         if cliente.decision == DM.COMPRA:
             
-            #TODO: Revisar si esto funciona bien
+            #TODO: Probar validando solo estado dueño
             if len(self.cola_compra) == 0 and self.dueño == ED.LIBRE:
                 fin_compra = FinCompraTicket(self.reloj, self.tiempo_compra, cliente, cliente.id)
                 self.eventos.append(fin_compra)
@@ -130,11 +130,14 @@ class Controlador:
             cliente.finalizar()
 
     def manejarFinCompraTicket(self, cliente_actual):
+        #limpio evento actual
+        self.fin_compra_ticket = FinCompraTicket(0, None, None, 0)
         #Analizar cola ticket(dueño)
         if len(self.cola_compra) >= 1:
             #Si tengo alguien en cola lo hago pasar, genero el evento fin compra del nuevo cliente
             prox_cliente = self.cola_compra.pop()
             nuevo_fin_compra = FinCompraTicket(self.reloj, self.tiempo_compra, prox_cliente, prox_cliente.id)
+            self.fin_compra_ticket = nuevo_fin_compra
             self.eventos.append(nuevo_fin_compra)
             prox_cliente.esperandoTicket()
         elif len(self.cola_compra) == 0:
